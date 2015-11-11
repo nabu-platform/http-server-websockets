@@ -62,6 +62,8 @@ public class WebsocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 	private TokenResolver tokenResolver;
 	private TokenValidator tokenValidator;
 	private PermissionHandler permissionHandler;
+	
+	private boolean requireUpgrade;
 
 	public WebsocketHandshakeHandler(EventDispatcher dispatcher, MessageDataProvider dataProvider, boolean shouldMaskResponses) {
 		this.dispatcher = dispatcher;
@@ -129,13 +131,20 @@ public class WebsocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 							new MimeHeader("Upgrade", "websocket"),
 							new MimeHeader("Connection", "Upgrade"),
 							new MimeHeader("Sec-WebSocket-Accept", responseToken),
-							new MimeHeader("Connection", "Keep-Alive")
+							new MimeHeader("Content-Length", "0")
 						));
 					}
 					else {
 						throw new HTTPException(500, "Could not find pipeline to upgrade");
 					}
 				}
+			}
+			if (requireUpgrade) {
+				return new DefaultHTTPResponse(426, HTTPCodes.getMessage(426), new PlainMimeEmptyPart(null, 
+					new MimeHeader("Content-Length", "0"),
+					new MimeHeader("Upgrade", "websocket"),
+					new MimeHeader("Connection", "Upgrade")
+				));
 			}
 		}
 		return null;
@@ -171,6 +180,14 @@ public class WebsocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 
 	public void setPermissionHandler(PermissionHandler permissionHandler) {
 		this.permissionHandler = permissionHandler;
+	}
+
+	public boolean isRequireUpgrade() {
+		return requireUpgrade;
+	}
+
+	public void setRequireUpgrade(boolean requireUpgrade) {
+		this.requireUpgrade = requireUpgrade;
 	}
 	
 }
