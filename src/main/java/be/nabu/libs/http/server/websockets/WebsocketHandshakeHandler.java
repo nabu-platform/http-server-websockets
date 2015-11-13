@@ -109,7 +109,7 @@ public class WebsocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 					if (pipeline instanceof UpgradeableMessagePipeline) {
 						double version = Double.parseDouble(versionHeader.getValue());
 						((UpgradeableMessagePipeline<?, ?>) pipeline).upgrade(
-							new WebSocketRequestParserFactory(dataProvider, protocols, request.getTarget(), version), 
+							new WebSocketRequestParserFactory(dataProvider, protocols, request.getTarget(), version, token, tokenValidator), 
 							new WebSocketMessageFormatterFactory(shouldMaskResponses), 
 							new WebSocketMessageProcessorFactory(dispatcher), 
 							new KeepAliveDecider<WebSocketMessage>() {
