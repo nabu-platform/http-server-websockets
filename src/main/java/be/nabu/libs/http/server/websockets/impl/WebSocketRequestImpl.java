@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.http.server.websockets.api.OpCode;
 import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
 import be.nabu.libs.resources.api.ReadableResource;
@@ -24,8 +25,9 @@ public class WebSocketRequestImpl implements WebSocketRequest {
 	private double version;
 	private List<String> protocols;
 	private byte[] maskingKey;
+	private Token token;
 	
-	WebSocketRequestImpl(List<String> protocols, String path, double version, OpCode opCode, boolean isMasked, byte[] maskingKey, boolean isFinal, long size, ReadableResource data) {
+	WebSocketRequestImpl(List<String> protocols, String path, double version, OpCode opCode, boolean isMasked, byte[] maskingKey, boolean isFinal, long size, ReadableResource data, Token token) {
 		this.protocols = protocols;
 		this.path = path;
 		this.version = version;
@@ -35,6 +37,7 @@ public class WebSocketRequestImpl implements WebSocketRequest {
 		this.isFinal = isFinal;
 		this.size = size;
 		this.data = data;
+		this.token = token;
 	}
 	
 	@Override
@@ -85,5 +88,9 @@ public class WebSocketRequestImpl implements WebSocketRequest {
 	public boolean isMasked() {
 		return isMasked;
 	}
-
+	
+	@Override
+	public Token getToken() {
+		return token;
+	}
 }

@@ -32,7 +32,7 @@ public class WebSocketRequestParserFactory implements MessageParserFactory<WebSo
 		if (token != null && tokenValidator != null && !tokenValidator.isValid(token)) {
 			throw new RuntimeException("The token is no longer valid");
 		}
-		return new WebSocketRequestParser(dataProvider, protocols, path, version);
+		return new WebSocketRequestParser(dataProvider, protocols, path, version, token);
 	}
 
 	public MessageDataProvider getDataProvider() {

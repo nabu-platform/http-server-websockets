@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.http.server.websockets.api.OpCode;
 import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
 import be.nabu.utils.io.IOUtils;
@@ -19,6 +20,7 @@ public class WebSocketRequestChain implements WebSocketRequest {
 	private boolean isMasked;
 	private long totalSize;
 	private List<String> protocols;
+	private Token token;
 
 	public WebSocketRequestChain(WebSocketRequest...requests) {
 		if (requests == null || requests.length == 0) {
@@ -60,6 +62,12 @@ public class WebSocketRequestChain implements WebSocketRequest {
 			}
 			else if (requests[i].isFinal()) {
 				throw new IllegalArgumentException("The messages in the chain (except the last) should not be final");
+			}
+			if (token == null) {
+				token = requests[i].getToken();
+			}
+			else if (!token.equals(requests[i].getToken())) {
+				throw new IllegalArgumentException("The messages are from different users");
 			}
 		}
 		this.requests = requests;
@@ -108,6 +116,12 @@ public class WebSocketRequestChain implements WebSocketRequest {
 	@Override
 	public List<String> getProtocols() {
 		return protocols;
+	}
+
+	@Override
+	public Token getToken() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

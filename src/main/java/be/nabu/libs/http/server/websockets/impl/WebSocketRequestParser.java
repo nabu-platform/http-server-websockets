@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.bouncycastle.util.Arrays;
 
+import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.http.server.websockets.api.OpCode;
 import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
 import be.nabu.libs.http.api.server.MessageDataProvider;
@@ -81,12 +82,14 @@ public class WebSocketRequestParser implements MessageParser<WebSocketRequest> {
 	private long dataRead;
 	private ByteBuffer copyBuffer = ByteBufferFactory.getInstance().newInstance(4096, true);
 	private List<String> protocols;
+	private Token token;
 
-	public WebSocketRequestParser(MessageDataProvider messageDataProvider, List<String> protocols, String path, double version) {
+	public WebSocketRequestParser(MessageDataProvider messageDataProvider, List<String> protocols, String path, double version, Token token) {
 		this.messageDataProvider = messageDataProvider;
 		this.protocols = protocols;
 		this.path = path;
 		this.version = version;
+		this.token = token;
 	}
 	
 	@Override
@@ -184,7 +187,7 @@ public class WebSocketRequestParser implements MessageParser<WebSocketRequest> {
 
 	@Override
 	public WebSocketRequest getMessage() {
-		return done ? new WebSocketRequestImpl(protocols, path, version, opCode, isMasked, mask, isFinal, extendedPayloadLength == null ? payloadLength : extendedPayloadLength, (ReadableResource) resource) : null;
+		return done ? new WebSocketRequestImpl(protocols, path, version, opCode, isMasked, mask, isFinal, extendedPayloadLength == null ? payloadLength : extendedPayloadLength, (ReadableResource) resource, token) : null;
 	}
 	
 	private boolean parseHeader() throws ParseException, IOException {
@@ -254,7 +257,14 @@ public class WebSocketRequestParser implements MessageParser<WebSocketRequest> {
 		if ((payloadLength == 126 && this.buffer.remainingData() >= 4) || (payloadLength == 127 && this.buffer.remainingData() >= 10)) {
 			java.nio.ByteBuffer buffer = null;
 			buffer = java.nio.ByteBuffer.allocate(Long.BYTES);
-			buffer.put(Arrays.copyOfRange(headerBytes, 2, payloadLength == 126 ? 4 : 10));
+			if (payloadLength == 126) {
+				buffer.put(new byte[6]);
+				buffer.put(Arrays.copyOfRange(headerBytes, 2, 4));
+			}
+			else {
+				buffer.put(Arrays.copyOfRange(headerBytes, 2, 10));
+			}
+			buffer.flip();
 			// make sure the leading bit is 0
 			return buffer.getLong() & Long.MAX_VALUE;
 		}
