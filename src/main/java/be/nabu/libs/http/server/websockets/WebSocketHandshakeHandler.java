@@ -53,7 +53,7 @@ import be.nabu.libs.http.core.DefaultHTTPResponse;
  * Sec-WebSocket-Version: 13
  * 
  */
-public class WebsocketHandshakeHandler implements EventHandler<HTTPRequest, HTTPResponse> {
+public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTPResponse> {
 
 	private MessageDataProvider dataProvider;
 	private boolean shouldMaskResponses;
@@ -65,7 +65,7 @@ public class WebsocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 	
 	private boolean requireUpgrade;
 
-	public WebsocketHandshakeHandler(EventDispatcher dispatcher, MessageDataProvider dataProvider, boolean shouldMaskResponses) {
+	public WebSocketHandshakeHandler(EventDispatcher dispatcher, MessageDataProvider dataProvider, boolean shouldMaskResponses) {
 		this.dispatcher = dispatcher;
 		this.dataProvider = dataProvider;
 		this.shouldMaskResponses = shouldMaskResponses;
@@ -150,7 +150,7 @@ public class WebsocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 		return null;
 	}
 
-	private String calculateResponse(String value) throws IOException, NoSuchAlgorithmException {
+	public static String calculateResponse(String value) throws IOException, NoSuchAlgorithmException {
 		// the magic string is detailed in: http://tools.ietf.org/html/rfc6455#section-1.3
 		String response = value + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 		byte[] digest = SecurityUtils.digest(new ByteArrayInputStream(response.getBytes("ASCII")), DigestAlgorithm.SHA1);

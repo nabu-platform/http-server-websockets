@@ -26,6 +26,15 @@ public class WebSocketUtils {
 		return new PathFilter(path, false, true);
 	}
 	
+	public static WebSocketRequestParserFactory getParserFactory(Pipeline pipeline) {
+		if (pipeline instanceof StandardizedMessagePipeline && ((StandardizedMessagePipeline<?, ?>) pipeline).getRequestParserFactory() instanceof WebSocketRequestParserFactory) {
+			return (WebSocketRequestParserFactory) ((StandardizedMessagePipeline<?, ?>) pipeline).getRequestParserFactory();
+		}
+		else {
+			return null;
+		}
+	}
+	
 	@SuppressWarnings("unchecked")
 	public static StandardizedMessagePipeline<WebSocketRequest, WebSocketMessage> getPipeline() {
 		Pipeline pipeline = PipelineUtils.getPipeline();
