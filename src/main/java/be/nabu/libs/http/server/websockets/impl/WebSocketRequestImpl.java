@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.http.server.websockets.api.OpCode;
 import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
@@ -26,8 +27,9 @@ public class WebSocketRequestImpl implements WebSocketRequest {
 	private List<String> protocols;
 	private byte[] maskingKey;
 	private Token token;
+	private Device device;
 	
-	WebSocketRequestImpl(List<String> protocols, String path, double version, OpCode opCode, boolean isMasked, byte[] maskingKey, boolean isFinal, long size, ReadableResource data, Token token) {
+	WebSocketRequestImpl(List<String> protocols, String path, double version, OpCode opCode, boolean isMasked, byte[] maskingKey, boolean isFinal, long size, ReadableResource data, Token token, Device device) {
 		this.protocols = protocols;
 		this.path = path;
 		this.version = version;
@@ -38,6 +40,7 @@ public class WebSocketRequestImpl implements WebSocketRequest {
 		this.size = size;
 		this.data = data;
 		this.token = token;
+		this.device = device;
 	}
 	
 	@Override
@@ -93,4 +96,10 @@ public class WebSocketRequestImpl implements WebSocketRequest {
 	public Token getToken() {
 		return token;
 	}
+
+	@Override
+	public Device getDevice() {
+		return device;
+	}
+	
 }

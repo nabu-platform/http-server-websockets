@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.bouncycastle.util.Arrays;
 
+import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.http.server.websockets.api.OpCode;
 import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
@@ -83,13 +84,15 @@ public class WebSocketRequestParser implements MessageParser<WebSocketRequest> {
 	private ByteBuffer copyBuffer = ByteBufferFactory.getInstance().newInstance(4096, true);
 	private List<String> protocols;
 	private Token token;
+	private Device device;
 
-	public WebSocketRequestParser(MessageDataProvider messageDataProvider, List<String> protocols, String path, double version, Token token) {
+	public WebSocketRequestParser(MessageDataProvider messageDataProvider, List<String> protocols, String path, double version, Token token, Device device) {
 		this.messageDataProvider = messageDataProvider;
 		this.protocols = protocols;
 		this.path = path;
 		this.version = version;
 		this.token = token;
+		this.device = device;
 	}
 	
 	@Override
@@ -187,7 +190,7 @@ public class WebSocketRequestParser implements MessageParser<WebSocketRequest> {
 
 	@Override
 	public WebSocketRequest getMessage() {
-		return done ? new WebSocketRequestImpl(protocols, path, version, opCode, isMasked, mask, isFinal, extendedPayloadLength == null ? payloadLength : extendedPayloadLength, (ReadableResource) resource, token) : null;
+		return done ? new WebSocketRequestImpl(protocols, path, version, opCode, isMasked, mask, isFinal, extendedPayloadLength == null ? payloadLength : extendedPayloadLength, (ReadableResource) resource, token, device) : null;
 	}
 	
 	private boolean parseHeader() throws ParseException, IOException {

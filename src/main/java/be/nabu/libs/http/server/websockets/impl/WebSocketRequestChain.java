@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.http.server.websockets.api.OpCode;
 import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
@@ -21,6 +22,7 @@ public class WebSocketRequestChain implements WebSocketRequest {
 	private long totalSize;
 	private List<String> protocols;
 	private Token token;
+	private Device device;
 
 	public WebSocketRequestChain(WebSocketRequest...requests) {
 		if (requests == null || requests.length == 0) {
@@ -68,6 +70,13 @@ public class WebSocketRequestChain implements WebSocketRequest {
 			}
 			else if (!token.equals(requests[i].getToken())) {
 				throw new IllegalArgumentException("The messages are from different users");
+			}
+			
+			if (device == null) {
+				device = requests[i].getDevice();
+			}
+			else if (!device.equals(requests[i].getToken())) {
+				throw new IllegalArgumentException("The messages are from different devices");
 			}
 		}
 		this.requests = requests;
@@ -120,8 +129,12 @@ public class WebSocketRequestChain implements WebSocketRequest {
 
 	@Override
 	public Token getToken() {
-		// TODO Auto-generated method stub
-		return null;
+		return token;
+	}
+
+	@Override
+	public Device getDevice() {
+		return device;
 	}
 
 }

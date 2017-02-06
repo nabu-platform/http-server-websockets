@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.events.api.EventHandler;
 import be.nabu.libs.http.server.websockets.api.OpCode;
@@ -71,6 +72,10 @@ public class WebSocketUtils {
 	
 	public static Token getToken(StandardizedMessagePipeline<WebSocketRequest, WebSocketMessage> pipeline) {
 		return ((WebSocketRequestParserFactory) pipeline.getRequestParserFactory()).getToken();
+	}
+	
+	public static Device getDevice(StandardizedMessagePipeline<WebSocketRequest, WebSocketMessage> pipeline) {
+		return ((WebSocketRequestParserFactory) pipeline.getRequestParserFactory()).getDevice();
 	}
 	
 	public static WebSocketMessage newMessage(final OpCode opCode, final boolean isFinal, final long size, final ReadableContainer<ByteBuffer> content) {

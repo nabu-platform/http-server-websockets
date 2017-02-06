@@ -9,6 +9,7 @@ import java.util.List;
 
 import be.nabu.libs.http.HTTPCodes;
 import be.nabu.libs.authentication.api.Authenticator;
+import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.PermissionHandler;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.authentication.api.TokenValidator;
@@ -36,6 +37,7 @@ import be.nabu.utils.mime.impl.MimeUtils;
 import be.nabu.utils.mime.impl.PlainMimeEmptyPart;
 import be.nabu.utils.security.DigestAlgorithm;
 import be.nabu.utils.security.SecurityUtils;
+import be.nabu.libs.http.api.server.DeviceResolver;
 import be.nabu.libs.http.api.server.MessageDataProvider;
 import be.nabu.libs.http.api.server.TokenResolver;
 import be.nabu.libs.http.core.DefaultHTTPResponse;
@@ -60,6 +62,7 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 	private EventDispatcher dispatcher;
 	
 	private TokenResolver tokenResolver;
+	private DeviceResolver deviceResolver;
 	private TokenValidator tokenValidator;
 	private PermissionHandler permissionHandler;
 	
@@ -90,6 +93,8 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 						throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have permission to upgrade to websockets on: " + request.getTarget());
 					}
 					
+					Device device = deviceResolver == null ? null : deviceResolver.getDevice(request.getContent().getHeaders());
+					
 					Header versionHeader = MimeUtils.getHeader("Sec-WebSocket-Version", request.getContent().getHeaders());
 					// currently we only support version 13 which is (at the time of writing) the latest and the only one that has any cross-browser support
 					// any error in the handling must be met with a 400
@@ -109,7 +114,7 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 					if (pipeline instanceof UpgradeableMessagePipeline) {
 						double version = Double.parseDouble(versionHeader.getValue());
 						((UpgradeableMessagePipeline<?, ?>) pipeline).upgrade(
-							new WebSocketRequestParserFactory(dataProvider, protocols, request.getTarget(), version, token, tokenValidator), 
+							new WebSocketRequestParserFactory(dataProvider, protocols, request.getTarget(), version, token, device, tokenValidator), 
 							new WebSocketMessageFormatterFactory(shouldMaskResponses), 
 							new WebSocketMessageProcessorFactory(dispatcher), 
 							new KeepAliveDecider<WebSocketMessage>() {
@@ -188,6 +193,14 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 
 	public void setRequireUpgrade(boolean requireUpgrade) {
 		this.requireUpgrade = requireUpgrade;
+	}
+
+	public DeviceResolver getDeviceResolver() {
+		return deviceResolver;
+	}
+
+	public void setDeviceResolver(DeviceResolver deviceResolver) {
+		this.deviceResolver = deviceResolver;
 	}
 	
 }

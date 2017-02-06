@@ -2,6 +2,7 @@ package be.nabu.libs.http.server.websockets.impl;
 
 import java.util.List;
 
+import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.authentication.api.TokenValidator;
 import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
@@ -17,13 +18,15 @@ public class WebSocketRequestParserFactory implements MessageParserFactory<WebSo
 	private double version;
 	private Token token;
 	private TokenValidator tokenValidator;
+	private Device device;
 
-	public WebSocketRequestParserFactory(MessageDataProvider dataProvider, List<String> protocols, String path, double version, Token token, TokenValidator tokenValidator) {
+	public WebSocketRequestParserFactory(MessageDataProvider dataProvider, List<String> protocols, String path, double version, Token token, Device device, TokenValidator tokenValidator) {
 		this.protocols = protocols;
 		this.path = path;
 		this.version = version;
 		this.dataProvider = dataProvider;
 		this.token = token;
+		this.device = device;
 		this.tokenValidator = tokenValidator;
 	}
 	
@@ -32,7 +35,7 @@ public class WebSocketRequestParserFactory implements MessageParserFactory<WebSo
 		if (token != null && tokenValidator != null && !tokenValidator.isValid(token)) {
 			throw new RuntimeException("The token is no longer valid");
 		}
-		return new WebSocketRequestParser(dataProvider, protocols, path, version, token);
+		return new WebSocketRequestParser(dataProvider, protocols, path, version, token, device);
 	}
 
 	public MessageDataProvider getDataProvider() {
@@ -58,4 +61,9 @@ public class WebSocketRequestParserFactory implements MessageParserFactory<WebSo
 	public TokenValidator getTokenValidator() {
 		return tokenValidator;
 	}
+
+	public Device getDevice() {
+		return device;
+	}
+	
 }
