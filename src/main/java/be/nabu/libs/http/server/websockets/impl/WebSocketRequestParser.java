@@ -112,8 +112,13 @@ public class WebSocketRequestParser implements MessageParser<WebSocketRequest> {
 				if (buffer.remainingSpace() == 0) {
 					throw new ParseException("Could not parse header within allotted space", 0);
 				}
-				if (content.read(buffer) < 0) {
+				long read = content.read(buffer);
+				if (read < 0) {
 					closed = true;
+					break;
+				}
+				// not enough data available to finish parsing the header
+				else if (read == 0) {
 					break;
 				}
 			}
