@@ -195,7 +195,11 @@ public class WebSocketRequestParser implements MessageParser<WebSocketRequest> {
 
 	@Override
 	public WebSocketRequest getMessage() {
-		return done ? new WebSocketRequestImpl(protocols, path, version, opCode, isMasked, mask, isFinal, extendedPayloadLength == null ? payloadLength : extendedPayloadLength, (ReadableResource) resource, token, device) : null;
+		WebSocketRequest request = done 
+			? new WebSocketRequestImpl(protocols, path, version, opCode, isMasked, mask, isFinal, extendedPayloadLength == null ? payloadLength : extendedPayloadLength, (ReadableResource) resource, token, device) 
+			: null;
+		System.out.println(">>> PARSED REQUEST: " + request.hashCode());
+		return request;
 	}
 	
 	private boolean parseHeader() throws ParseException, IOException {
