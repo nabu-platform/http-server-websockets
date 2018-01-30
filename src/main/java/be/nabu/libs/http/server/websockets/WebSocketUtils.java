@@ -1,5 +1,6 @@
 package be.nabu.libs.http.server.websockets;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -102,6 +103,27 @@ public class WebSocketUtils {
 	
 	public static Device getDevice(StandardizedMessagePipeline<WebSocketRequest, WebSocketMessage> pipeline) {
 		return ((WebSocketRequestParserFactory) pipeline.getRequestParserFactory()).getDevice();
+	}
+	
+	public static WebSocketMessage newMessage(final byte [] bytes) {
+		return new WebSocketMessage() {
+			@Override
+			public boolean isFinal() {
+				return true;
+			}
+			@Override
+			public long getSize() {
+				return bytes.length;
+			}
+			@Override
+			public OpCode getOpCode() {
+				return OpCode.BINARY;
+			}
+			@Override
+			public InputStream getData() {
+				return new ByteArrayInputStream(bytes);
+			}
+		};
 	}
 	
 	public static WebSocketMessage newMessage(final OpCode opCode, final boolean isFinal, final long size, final ReadableContainer<ByteBuffer> content) {
