@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +19,7 @@ import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.RoleHandler;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.authentication.api.TokenValidator;
+import be.nabu.libs.authentication.api.principals.BasicPrincipal;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.api.EventHandler;
 import be.nabu.libs.events.api.EventSubscription;
@@ -27,6 +29,7 @@ import be.nabu.libs.http.api.client.HTTPClient;
 import be.nabu.libs.http.api.server.MessageDataProvider;
 import be.nabu.libs.http.client.nio.NIOHTTPClientImpl;
 import be.nabu.libs.http.core.DefaultHTTPRequest;
+import be.nabu.libs.http.core.HTTPUtils;
 import be.nabu.libs.http.server.SimpleAuthenticationHeader;
 import be.nabu.libs.http.server.websockets.api.OpCode;
 import be.nabu.libs.http.server.websockets.api.WebSocketMessage;
@@ -150,8 +153,8 @@ public class WebSocketUtils {
 	public static EventSubscription<HTTPResponse, HTTPRequest> allowWebsockets(NIOHTTPClientImpl client, MessageDataProvider dataProvider) {
 		return client.getDispatcher().subscribe(HTTPResponse.class, new ClientWebSocketUpgradeHandler(dataProvider));
 	}
-	
-	public static HTTPResponse upgrade(HTTPClient client, SSLContext context, String host, Integer port, String path, Token token, MessageDataProvider dataProvider, EventDispatcher dispatcher, List<String> protocols) throws UnsupportedEncodingException, IOException, FormatException, ParseException {
+
+	public static HTTPResponse upgrade(HTTPClient client, SSLContext context, String host, Integer port, String path, Token token, MessageDataProvider dataProvider, EventDispatcher dispatcher, List<String> protocols, WebAuthorizationType preemptiveAuthorization) throws UnsupportedEncodingException, IOException, FormatException, ParseException {
 		if (port == null) {
 			port = context == null ? 80 : 443;
 		}
@@ -180,6 +183,23 @@ public class WebSocketUtils {
 			}
 			content.setHeader(new MimeHeader("Sec-WebSocket-Protocol", builder.toString()));
 		}
+		
+		if (preemptiveAuthorization != null) {
+			switch (preemptiveAuthorization) {
+				case BASIC:
+					String password = ((BasicPrincipal) token).getPassword();
+					byte [] base64 = IOUtils.toBytes(TranscoderUtils.transcodeBytes(
+						IOUtils.wrap((token.getName() + ":" + (password == null ? "" : password)).getBytes("UTF-8"), true), 
+						new Base64Encoder())
+					);
+					content.setHeader(new MimeHeader(HTTPUtils.SERVER_AUTHENTICATE_RESPONSE, "Basic " + new String(base64, Charset.forName("ASCII"))));
+				break;
+				case BEARER:
+					content.setHeader(new MimeHeader(HTTPUtils.SERVER_AUTHENTICATE_RESPONSE, "Bearer " + token.getName()));
+				break;
+			}
+		}
+		
 		return client.execute(new DefaultHTTPRequest(
 			"GET",
 			path,
