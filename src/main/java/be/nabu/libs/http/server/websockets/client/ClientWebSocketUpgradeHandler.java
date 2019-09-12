@@ -23,12 +23,14 @@ import be.nabu.libs.http.core.HTTPUtils;
 import be.nabu.libs.http.server.websockets.WebSocketHandshakeHandler;
 import be.nabu.libs.http.server.websockets.api.OpCode;
 import be.nabu.libs.http.server.websockets.api.WebSocketMessage;
+import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
 import be.nabu.libs.http.server.websockets.impl.WebSocketExceptionFormatter;
 import be.nabu.libs.http.server.websockets.impl.WebSocketMessageFormatterFactory;
 import be.nabu.libs.http.server.websockets.impl.WebSocketMessageProcessorFactory;
 import be.nabu.libs.http.server.websockets.impl.WebSocketRequestParserFactory;
 import be.nabu.libs.nio.PipelineUtils;
 import be.nabu.libs.nio.api.KeepAliveDecider;
+import be.nabu.libs.nio.api.MessagePipeline;
 import be.nabu.libs.nio.api.Pipeline;
 import be.nabu.libs.nio.api.UpgradeableMessagePipeline;
 import be.nabu.utils.mime.api.Header;
@@ -38,9 +40,19 @@ public class ClientWebSocketUpgradeHandler implements EventHandler<HTTPResponse,
 
 	private MessageDataProvider dataProvider;
 	private Logger logger = LoggerFactory.getLogger(getClass());
+	private boolean shouldMaskResponses;
+	private EventDispatcher dispatcher;
 	
 	public ClientWebSocketUpgradeHandler(MessageDataProvider dataProvider) {
+		this(dataProvider, true, null);
+	}
+	public ClientWebSocketUpgradeHandler(MessageDataProvider dataProvider, boolean shouldMaskResponses) {
+		this(dataProvider, shouldMaskResponses, null);
+	}
+	public ClientWebSocketUpgradeHandler(MessageDataProvider dataProvider, boolean shouldMaskResponses, EventDispatcher dispatcher) {
 		this.dataProvider = dataProvider;
+		this.shouldMaskResponses = shouldMaskResponses;
+		this.dispatcher = dispatcher;
 	}
 	
 	@Override
@@ -64,10 +76,8 @@ public class ClientWebSocketUpgradeHandler implements EventHandler<HTTPResponse,
 			double version = 13;
 			TokenValidator tokenValidator = null;
 			Device device = null;
-			boolean shouldMaskResponses = true;
 			
 			Pipeline pipeline = PipelineUtils.getPipeline();
-			EventDispatcher dispatcher = pipeline.getServer().getDispatcher();
 			if (pipeline instanceof UpgradeableMessagePipeline) {
 				HTTPRequest request = ((LinkableHTTPResponse) response).getRequest();
 				
@@ -89,10 +99,10 @@ public class ClientWebSocketUpgradeHandler implements EventHandler<HTTPResponse,
 				AuthenticationHeader authenticationHeader = HTTPUtils.getAuthenticationHeader(request.getContent().getHeaders());
 				Token token = authenticationHeader == null ? null : authenticationHeader.getToken();
 				
-				((UpgradeableMessagePipeline<?, ?>) pipeline).upgrade(
+				MessagePipeline<WebSocketRequest, WebSocketMessage> upgrade = ((UpgradeableMessagePipeline<?, ?>) pipeline).upgrade(
 					new WebSocketRequestParserFactory(dataProvider, protocols, request.getTarget(), version, token, device, tokenValidator), 
 					new WebSocketMessageFormatterFactory(shouldMaskResponses), 
-					new WebSocketMessageProcessorFactory(dispatcher), 
+					new WebSocketMessageProcessorFactory(dispatcher == null ? pipeline.getServer().getDispatcher() : dispatcher), 
 					new KeepAliveDecider<WebSocketMessage>() {
 						@Override
 						public boolean keepConnectionAlive(WebSocketMessage response) {
@@ -101,6 +111,8 @@ public class ClientWebSocketUpgradeHandler implements EventHandler<HTTPResponse,
 					}, 
 					new WebSocketExceptionFormatter()
 				);
+				// we want to inherit the context
+				upgrade.getContext().putAll(pipeline.getContext());
 			}
 			else {
 				throw new HTTPException(500, "Could not find pipeline to upgrade");
