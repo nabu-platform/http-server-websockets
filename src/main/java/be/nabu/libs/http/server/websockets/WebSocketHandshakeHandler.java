@@ -132,7 +132,7 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 						catch (Exception e) {
 							throw new HTTPException(500, e);
 						}
-						return new DefaultHTTPResponse(101, HTTPCodes.getMessage(101), new PlainMimeEmptyPart(null, 
+						return new DefaultHTTPResponse(request, 101, HTTPCodes.getMessage(101), new PlainMimeEmptyPart(null, 
 							new MimeHeader("Upgrade", "websocket"),
 							new MimeHeader("Connection", "Upgrade"),
 							new MimeHeader("Sec-WebSocket-Accept", responseToken),
@@ -145,7 +145,7 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 				}
 			}
 			if (requireUpgrade) {
-				return new DefaultHTTPResponse(426, HTTPCodes.getMessage(426), new PlainMimeEmptyPart(null, 
+				return new DefaultHTTPResponse(request, 426, HTTPCodes.getMessage(426), new PlainMimeEmptyPart(null, 
 					new MimeHeader("Content-Length", "0"),
 					new MimeHeader("Upgrade", "websocket"),
 					new MimeHeader("Connection", "Upgrade")
