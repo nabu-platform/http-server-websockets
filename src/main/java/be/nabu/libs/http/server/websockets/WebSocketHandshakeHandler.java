@@ -132,12 +132,19 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 						catch (Exception e) {
 							throw new HTTPException(500, e);
 						}
-						return new DefaultHTTPResponse(request, 101, HTTPCodes.getMessage(101), new PlainMimeEmptyPart(null, 
+						PlainMimeEmptyPart content = new PlainMimeEmptyPart(null, 
 							new MimeHeader("Upgrade", "websocket"),
 							new MimeHeader("Connection", "Upgrade"),
 							new MimeHeader("Sec-WebSocket-Accept", responseToken),
 							new MimeHeader("Content-Length", "0")
-						));
+						);
+						// if you sent protocols, we must select one or it is considered invalid
+						// in the future, we should make this an interface so you can actually choose the protocols you want
+						// currently we just accept the first, this also requires support (in the future) in the reverse proxy
+						if (!protocols.isEmpty()) {
+							content.setHeader(new MimeHeader("Sec-WebSocket-Protocol", protocols.get(0)));
+						}
+						return new DefaultHTTPResponse(request, 101, HTTPCodes.getMessage(101), content);
 					}
 					else {
 						throw new HTTPException(500, "Could not find pipeline to upgrade");
