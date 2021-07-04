@@ -69,7 +69,7 @@ public class WebSocketRequestChain implements WebSocketRequest {
 				token = requests[i].getToken();
 			}
 			else if (!token.equals(requests[i].getToken())) {
-				throw new IllegalArgumentException("The messages are from different users");
+				throw new IllegalArgumentException("The messages are from different users, expecting token " + token + ", received: " + requests[i].getToken());
 			}
 			
 			if (device == null) {
