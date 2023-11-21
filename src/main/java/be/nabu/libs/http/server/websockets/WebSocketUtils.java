@@ -11,6 +11,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Future;
 
 import javax.jws.WebResult;
 import javax.net.ssl.SSLContext;
@@ -296,5 +297,10 @@ public class WebSocketUtils {
 			resultingPipelines.add(pipeline);
 		}
 		return resultingPipelines;
+	}
+	
+	// check a ping pong
+	public static Future<Boolean> pingPong(StandardizedMessagePipeline<WebSocketRequest, WebSocketMessage> pipeline) {
+		
 	}
 }
