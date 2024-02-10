@@ -65,5 +65,13 @@ public class WebSocketRequestParserFactory implements MessageParserFactory<WebSo
 	public Device getDevice() {
 		return device;
 	}
+
+	public void setToken(Token token) {
+		this.token = token;
+	}
+
+	public void setDevice(Device device) {
+		this.device = device;
+	}
 	
 }

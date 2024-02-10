@@ -11,7 +11,11 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import javax.jws.WebResult;
 import javax.net.ssl.SSLContext;
@@ -33,6 +37,7 @@ import be.nabu.libs.http.core.DefaultHTTPRequest;
 import be.nabu.libs.http.core.HTTPUtils;
 import be.nabu.libs.http.server.SimpleAuthenticationHeader;
 import be.nabu.libs.http.server.websockets.api.OpCode;
+import be.nabu.libs.http.server.websockets.api.PongListener;
 import be.nabu.libs.http.server.websockets.api.WebSocketMessage;
 import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
 import be.nabu.libs.http.server.websockets.client.ClientWebSocketUpgradeHandler;
@@ -42,6 +47,8 @@ import be.nabu.libs.nio.PipelineUtils;
 import be.nabu.libs.nio.api.MessageParserFactory;
 import be.nabu.libs.nio.api.NIOServer;
 import be.nabu.libs.nio.api.Pipeline;
+import be.nabu.libs.nio.api.SecurityContext;
+import be.nabu.libs.nio.api.SourceContext;
 import be.nabu.libs.nio.api.StandardizedMessagePipeline;
 import be.nabu.utils.codec.TranscoderUtils;
 import be.nabu.utils.codec.impl.Base64Encoder;
@@ -54,6 +61,55 @@ import be.nabu.utils.mime.impl.PlainMimeEmptyPart;
 
 public class WebSocketUtils {
 	
+	private static final class BooleanFuture implements Future<Boolean> {
+		private CountDownLatch latch = new CountDownLatch(1);
+		private boolean cancelled = false;
+		private boolean done = false;
+
+		public void finish() {
+			this.done = true;
+			latch.countDown();
+		}
+
+		@Override
+		public boolean cancel(boolean mayInterruptIfRunning) {
+			if (!done) {
+				while (latch.getCount() > 0) {
+					latch.countDown();
+				}
+				cancelled = true;
+				return true;
+			}
+			return false;
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		@Override
+		public boolean isDone() {
+			return !cancelled && done;
+		}
+
+		@Override
+		public Boolean get() throws InterruptedException, ExecutionException {
+			try {
+				return get(365, TimeUnit.DAYS);
+			}
+			catch (TimeoutException e) {
+				throw new ExecutionException(e);
+			}
+		}
+
+		@Override
+		public Boolean get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+			latch.await(timeout, unit);
+			return done;
+		}
+	}
+
 	public static EventHandler<WebSocketRequest, Boolean> limitToPath(String path) {
 		return new PathFilter(path, false, true);
 	}
@@ -299,8 +355,25 @@ public class WebSocketUtils {
 		return resultingPipelines;
 	}
 	
-	// check a ping pong
+	// perform a ping pong
 	public static Future<Boolean> pingPong(StandardizedMessagePipeline<WebSocketRequest, WebSocketMessage> pipeline) {
-		
+		// remove any pong listener already there, we chain it
+		final PongListener chained = (PongListener) pipeline.getContext().get(PongListener.KEY);
+		final BooleanFuture future = new BooleanFuture();
+		pipeline.getContext().put(PongListener.KEY, new PongListener() {
+			@Override
+			public void pongReceived(SecurityContext securityContext, SourceContext sourceContext, WebSocketRequest request) {
+				System.out.println("[WEBSOCKET] PONG received");
+				if (chained != null) {
+					chained.pongReceived(securityContext, sourceContext, request);
+				}
+				future.finish();
+			}
+		});
+		System.out.println("[WEBSOCKET] PING sent");
+		pipeline.getResponseQueue().add(
+			WebSocketUtils.newMessage(OpCode.PING, true, 0, IOUtils.wrap(new byte[0], true))	
+		);
+		return future;
 	}
 }

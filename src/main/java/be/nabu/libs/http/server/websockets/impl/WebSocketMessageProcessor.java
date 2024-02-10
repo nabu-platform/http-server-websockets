@@ -1,9 +1,13 @@
 package be.nabu.libs.http.server.websockets.impl;
 
+import java.util.Map;
+
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.http.server.websockets.api.OpCode;
+import be.nabu.libs.http.server.websockets.api.PongListener;
 import be.nabu.libs.http.server.websockets.api.WebSocketMessage;
 import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
+import be.nabu.libs.nio.PipelineUtils;
 import be.nabu.libs.nio.api.SecurityContext;
 import be.nabu.libs.nio.api.SourceContext;
 import be.nabu.libs.nio.impl.EventDrivenMessageProcessor;
@@ -29,6 +33,11 @@ public class WebSocketMessageProcessor extends EventDrivenMessageProcessor<WebSo
 		}
 		// pongs can be ignored
 		else if (OpCode.PONG.equals(request.getOpCode())) {
+			Map<String, Object> context = PipelineUtils.getPipeline().getContext();
+			PongListener listener = (PongListener) context.remove(PongListener.KEY);
+			if (listener != null) {
+				listener.pongReceived(securityContext, sourceContext, request);
+			}
 			return null;
 		}
 		if (request.isFinal()) {
