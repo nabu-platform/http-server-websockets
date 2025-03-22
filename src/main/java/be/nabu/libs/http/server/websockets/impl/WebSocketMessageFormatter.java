@@ -81,7 +81,10 @@ public class WebSocketMessageFormatter implements MessageFormatter<WebSocketMess
 		byteBuffer.putLong(message.getSize());
 		byteBuffer.flip();
 		// this sort of ignores the fact that the short is signed, but all it does (or should do) is use the 64 bit field for a value that might've also fit in the 16 bit one, nothing in the spec prevents that
-		if (message.getSize() > Short.MAX_VALUE) {
+//		if (message.getSize() > Short.MAX_VALUE) {
+		// the maximum value of an unsigned short
+		// apparently it DOES matter, browsers will throw an: Invalid frame header
+		if (message.getSize() > 65535) {
 			// we go for 64 bits
 			secondByte |= 127;
 			extendedLength = new byte[8];
