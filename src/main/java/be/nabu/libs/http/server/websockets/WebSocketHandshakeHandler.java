@@ -23,6 +23,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import be.nabu.libs.http.HTTPCodes;
 import be.nabu.libs.authentication.api.Authenticator;
@@ -36,6 +37,7 @@ import be.nabu.libs.http.api.HTTPRequest;
 import be.nabu.libs.http.api.HTTPResponse;
 import be.nabu.libs.http.server.websockets.api.OpCode;
 import be.nabu.libs.http.server.websockets.api.WebSocketMessage;
+import be.nabu.libs.http.server.websockets.api.WebSocketRequest;
 import be.nabu.libs.http.server.websockets.impl.WebSocketExceptionFormatter;
 import be.nabu.libs.http.server.websockets.impl.WebSocketMessageFormatterFactory;
 import be.nabu.libs.http.server.websockets.impl.WebSocketMessageProcessorFactory;
@@ -43,6 +45,10 @@ import be.nabu.libs.http.server.websockets.impl.WebSocketRequestParserFactory;
 import be.nabu.libs.http.HTTPException;
 import be.nabu.libs.nio.PipelineUtils;
 import be.nabu.libs.nio.api.KeepAliveDecider;
+import be.nabu.libs.nio.api.ListenableMessagePipeline;
+import be.nabu.libs.nio.api.MessagePipeline;
+import be.nabu.libs.nio.api.MessagePipelineListener;
+import be.nabu.libs.nio.api.NIOServer;
 import be.nabu.libs.nio.api.Pipeline;
 import be.nabu.libs.nio.api.UpgradeableMessagePipeline;
 import be.nabu.utils.codec.TranscoderUtils;
@@ -91,6 +97,7 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 		this.shouldMaskResponses = shouldMaskResponses;
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	public HTTPResponse handle(HTTPRequest request) {
 		// a websocket upgrade request _must_ use the GET method and _must_ be 1.1 or greater 
@@ -106,6 +113,7 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 							token = null;
 						}
 					}
+					final Token finalToken = token;
 					if (permissionHandler != null && !permissionHandler.hasPermission(token, request.getTarget(), "WEBSOCKET")) {
 						throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have permission to upgrade to websockets on: " + request.getTarget());
 					}
@@ -130,7 +138,7 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 					Pipeline pipeline = PipelineUtils.getPipeline();
 					if (pipeline instanceof UpgradeableMessagePipeline) {
 						double version = Double.parseDouble(versionHeader.getValue());
-						((UpgradeableMessagePipeline<?, ?>) pipeline).upgrade(
+						MessagePipeline<WebSocketRequest, WebSocketMessage> newPipeline = ((UpgradeableMessagePipeline<?, ?>) pipeline).upgrade(
 							new WebSocketRequestParserFactory(dataProvider, protocols, request.getTarget(), version, token, device, tokenValidator), 
 							new WebSocketMessageFormatterFactory(shouldMaskResponses), 
 							new WebSocketMessageProcessorFactory(dispatcher), 
@@ -161,6 +169,37 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 						if (!protocols.isEmpty()) {
 							content.setHeader(new MimeHeader("Sec-WebSocket-Protocol", protocols.get(0)));
 						}
+						AtomicReference<AutoCloseable> stopper = new AtomicReference<AutoCloseable>();
+						stopper.set(((ListenableMessagePipeline<HTTPRequest, HTTPResponse>) pipeline).listen(new MessagePipelineListener<HTTPRequest, HTTPResponse>() {
+							@Override
+							public void onResponseAdded(HTTPResponse response) {
+								// the classic problem is that UNTIL the response we send back below actually makes it to the client, we can't start publishing websocket messages
+								// so we want a hook that tells us when we can actually start publishing messages
+								if (response.getCode() == 101) {
+									// BEFORE we call our hook, we need to unregister ourselves so that IF that hook starts synchronously publishing messages, we are not called again
+									try {
+										stopper.get().close();
+									}
+									catch (Exception e) {
+										e.printStackTrace();
+									}
+									dispatcher.fire(new WebSocketConnectionEvent() {
+										@Override
+										public ConnectionState getState() {
+											return ConnectionState.READY;
+										}
+										@Override
+										public Pipeline getPipeline() {
+											return newPipeline;
+										}
+										@Override
+										public Token getToken() {
+											return finalToken;
+										}
+									}, this);
+								}
+							}
+						}));
 						return new DefaultHTTPResponse(request, 101, HTTPCodes.getMessage(101), content);
 					}
 					else {
