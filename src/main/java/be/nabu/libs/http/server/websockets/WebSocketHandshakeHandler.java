@@ -171,12 +171,15 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 						}
 						AtomicReference<AutoCloseable> stopper = new AtomicReference<AutoCloseable>();
 						stopper.set(((ListenableMessagePipeline<HTTPRequest, HTTPResponse>) pipeline).listen(new MessagePipelineListener<HTTPRequest, HTTPResponse>() {
+							// by waiting until the response is ADDED (not removed), we ensure that the ResponseWriter is in a correct state to use the parent pipeline draining
+							// the draining only works IF the parent pipeline has outgoing messages pending, but we are only returning it below here. so we need to wait until it is added to the queue
+							// if we wait until removed, the state might not be correct in the response formatter to kickstart the correct sequence of events
 							@Override
 							public void onResponseAdded(HTTPResponse response) {
 								// the classic problem is that UNTIL the response we send back below actually makes it to the client, we can't start publishing websocket messages
 								// so we want a hook that tells us when we can actually start publishing messages
 								if (response.getCode() == 101) {
-									// BEFORE we call our hook, we need to unregister ourselves so that IF that hook starts synchronously publishing messages, we are not called again
+									// let's unregister ourselves before we call the hook, it shouldn't matter too much because the hook should be publishing to a different queue but still
 									try {
 										stopper.get().close();
 									}
