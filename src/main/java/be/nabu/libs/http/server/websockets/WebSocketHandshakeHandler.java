@@ -199,6 +199,10 @@ public class WebSocketHandshakeHandler implements EventHandler<HTTPRequest, HTTP
 										public Token getToken() {
 											return finalToken;
 										}
+										@Override
+										public HTTPRequest getOriginalHTTPRequest() {
+											return request;
+										}
 									}, this);
 								}
 							}
